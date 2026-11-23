@@ -4,12 +4,15 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class CommentCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     text: str = Field(..., min_length=1)
     news_id: int = Field(..., gt=0)
-    author_id: int = Field(..., gt=0)
 
 
 class CommentUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     text: str = Field(..., min_length=1)
 
 
