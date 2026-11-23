@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 
 from app.models.comment import Comment
 from app.models.news import News
-from app.models.user import User
 from app.schemas.comment import CommentCreate, CommentUpdate
 
 
@@ -31,34 +30,26 @@ def get_comment(db: Session, comment_id: int) -> Comment:
     return comment
 
 
-def create_comment(db: Session, payload: CommentCreate) -> Comment:
+def create_comment(db: Session, payload: CommentCreate, author_id: int) -> Comment:
     if db.get(News, payload.news_id) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"News with id={payload.news_id} not found",
         )
-    if db.get(User, payload.author_id) is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with id={payload.author_id} not found",
-        )
-
-    comment = Comment(**payload.model_dump())
+    comment = Comment(**payload.model_dump(), author_id=author_id)
     db.add(comment)
     db.commit()
     db.refresh(comment)
     return comment
 
 
-def update_comment(db: Session, comment_id: int, payload: CommentUpdate) -> Comment:
-    comment = get_comment(db, comment_id)
+def update_comment(db: Session, comment: Comment, payload: CommentUpdate) -> Comment:
     comment.text = payload.text
     db.commit()
     db.refresh(comment)
     return comment
 
 
-def delete_comment(db: Session, comment_id: int) -> None:
-    comment = get_comment(db, comment_id)
+def delete_comment(db: Session, comment: Comment) -> None:
     db.delete(comment)
     db.commit()

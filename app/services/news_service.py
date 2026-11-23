@@ -3,7 +3,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.news import News
-from app.models.user import User
 from app.schemas.news import NewsCreate, NewsUpdate
 
 
@@ -24,28 +23,15 @@ def get_news(db: Session, news_id: int) -> News:
     return news
 
 
-def create_news(db: Session, payload: NewsCreate) -> News:
-    author = db.get(User, payload.author_id)
-    if author is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Author with id={payload.author_id} not found",
-        )
-    if not author.is_verified_author:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only verified authors can publish news",
-        )
-
-    news = News(**payload.model_dump())
+def create_news(db: Session, payload: NewsCreate, author_id: int) -> News:
+    news = News(**payload.model_dump(), author_id=author_id)
     db.add(news)
     db.commit()
     db.refresh(news)
     return news
 
 
-def update_news(db: Session, news_id: int, payload: NewsUpdate) -> News:
-    news = get_news(db, news_id)
+def update_news(db: Session, news: News, payload: NewsUpdate) -> News:
     updates = payload.model_dump(exclude_unset=True)
     for field, value in updates.items():
         setattr(news, field, value)
@@ -54,7 +40,6 @@ def update_news(db: Session, news_id: int, payload: NewsUpdate) -> News:
     return news
 
 
-def delete_news(db: Session, news_id: int) -> None:
-    news = get_news(db, news_id)
+def delete_news(db: Session, news: News) -> None:
     db.delete(news)
     db.commit()

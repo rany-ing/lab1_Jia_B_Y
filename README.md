@@ -106,7 +106,7 @@ erDiagram
 
 ## Миграции (Alembic)
 
-В проекте определены две последовательные миграции:
+В проекте определены три последовательные миграции:
 
 1. **`0001_create_initial_tables`** — создаёт таблицы `users`, `news`, `comments`, первичный и внешние ключи с `ON DELETE CASCADE`, уникальный индекс `ix_users_email` и индексы для внешних ключей (`ix_news_author_id`, `ix_comments_news_id`, `ix_comments_author_id`). В `downgrade()` выполняется обратное удаление индексов и таблиц.
 2. **`0002_seed_mock_data`** — добавляет моковые данные:
@@ -114,6 +114,7 @@ erDiagram
    - 2 новости с JSON-контентом,
    - 3 комментария.
    После вставки явных `id` выполняется синхронизация PostgreSQL-последовательностей (`setval`), чтобы последующие `POST`-запросы не конфликтовали по первичному ключу. В `downgrade()` моковые записи удаляются.
+3. **`0003_add_auth`** — добавляет учётные данные, роль администратора и таблицу сессий обновления токенов.
 
 ---
 
@@ -127,6 +128,8 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+Сгенерируйте ключ командой `python -c "import secrets; print(secrets.token_urlsafe(48))"` и укажите его в поле `JWT_SECRET` файла `.env`.
 
 ### 2. Запуск PostgreSQL
 
@@ -167,128 +170,6 @@ uvicorn app.main:app --reload
 
 ---
 
-## Примеры использования API (`curl`)
+## Аутентификация и примеры API
 
-Ниже приведён полный сценарий проверки всех ручек и бизнес-правил из ТЗ.
-
-### 0. Проверка состояния сервиса и моковых данных
-
-```bash
-curl -s http://127.0.0.1:8000/health
-curl -s http://127.0.0.1:8000/users
-curl -s http://127.0.0.1:8000/news
-curl -s http://127.0.0.1:8000/comments
-```
-
-### 1. Создание пользователей (верифицированный автор и обычный пользователь)
-
-```bash
-# Верифицированный автор
-curl -s -X POST http://127.0.0.1:8000/users \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Елена Автор",
-    "email": "elena@example.com",
-    "is_verified_author": true,
-    "avatar": "https://example.com/avatars/elena.png"
-  }'
-
-# Обычный пользователь (не верифицирован как автор)
-curl -s -X POST http://127.0.0.1:8000/users \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Дмитрий Читатель",
-    "email": "dmitry@example.com",
-    "is_verified_author": false,
-    "avatar": "https://example.com/avatars/dmitry.png"
-  }'
-```
-
-### 2. Проверка ограничения: неверифицированный пользователь не может создать новость (`403`)
-
-```bash
-curl -i -X POST http://127.0.0.1:8000/news \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Попытка публикации без верификации",
-    "content": {"text": "Эта новость не должна создаться"},
-    "author_id": 5
-  }'
-```
-
-### 3. Создание новости от верифицированного автора (`201`)
-
-```bash
-curl -s -X POST http://127.0.0.1:8000/news \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Итоги лабораторной работы №1",
-    "content": {
-      "lead": "Запущен REST API для новостей.",
-      "sections": [
-        {"heading": "Стек", "body": "FastAPI + SQLAlchemy + Alembic + PostgreSQL"}
-      ]
-    },
-    "author_id": 4,
-    "cover": "https://example.com/covers/lab1.png"
-  }'
-```
-
-### 4. Создание комментария к новости от другого пользователя (`201`)
-
-```bash
-curl -s -X POST http://127.0.0.1:8000/comments \
-  -H "Content-Type: application/json" \
-  -d '{
-    "text": "Отличная новость, всё работает!",
-    "news_id": 3,
-    "author_id": 5
-  }'
-```
-
-### 5. Изменение новости (`PATCH`)
-
-```bash
-curl -s -X PATCH http://127.0.0.1:8000/news/3 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Итоги лабораторной работы №1 (обновлено)",
-    "content": {
-      "lead": "Запущен и протестирован REST API для новостей.",
-      "updated": true
-    }
-  }'
-```
-
-### 6. Изменение комментария (`PATCH`)
-
-```bash
-curl -s -X PATCH http://127.0.0.1:8000/comments/4 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "text": "Обновлённый текст комментария."
-  }'
-```
-
-### 7. Удаление новости вместе со всеми её комментариями (`204`)
-
-```bash
-# Удалить новость
-curl -i -X DELETE http://127.0.0.1:8000/news/3
-
-# Проверить, что комментарии этой новости также удалены (вернёт [])
-curl -s "http://127.0.0.1:8000/comments?news_id=3"
-```
-
-### Дополнительные операции над пользователями и комментариями
-
-```bash
-# Обновление пользователя
-curl -s -X PATCH http://127.0.0.1:8000/users/5 \
-  -H "Content-Type: application/json" \
-  -d '{"is_verified_author": true}'
-
-# Удаление комментария и пользователя
-curl -i -X DELETE http://127.0.0.1:8000/comments/1
-curl -i -X DELETE http://127.0.0.1:8000/users/5
-```
+Настройка GitHub OAuth, работа с JWT, права доступа и команды для проверки описаны в [документации модуля 3](docs/auth/README.md).
