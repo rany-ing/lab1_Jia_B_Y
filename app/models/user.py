@@ -23,6 +23,7 @@ class User(Base):
         nullable=False,
     )
     is_verified_author: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String(255))
     avatar: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     news: Mapped[list["News"]] = relationship(
