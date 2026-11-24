@@ -24,12 +24,12 @@ def list_news(
 
 @router.get("/{news_id}", response_model=NewsRead)
 def get_news(news_id: int, db: Session = Depends(get_db)) -> NewsRead:
-    return news_service.get_news(db, news_id)
+    return news_service.get_cached_news(db, news_id)
 
 
 @router.get("/{news_id}/comments", response_model=list[CommentRead])
 def list_news_comments(news_id: int, db: Session = Depends(get_db)) -> list[CommentRead]:
-    news_service.get_news(db, news_id)
+    news_service.get_cached_news(db, news_id)
     return comment_service.list_comments(db, news_id=news_id)
 
 

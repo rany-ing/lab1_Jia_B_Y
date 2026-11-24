@@ -1,6 +1,6 @@
 # News Management API (`lab1_Jia_B_Y`)
 
-CRUD API для управления **пользователями**, **новостями** (с поддержкой JSON-контента) и **комментариями**, реализованный на **FastAPI**, **SQLAlchemy 2**, **Alembic** и **PostgreSQL**.
+CRUD API для управления **пользователями**, **новостями** (с поддержкой JSON-контента) и **комментариями**, реализованный на **FastAPI**, **SQLAlchemy 2**, **Alembic**, **PostgreSQL** и **Redis**.
 
 ## Стек и требования
 
@@ -8,9 +8,10 @@ CRUD API для управления **пользователями**, **нов�
 - **Фреймворк**: `FastAPI` + `Uvicorn`
 - **ORM и миграции**: `SQLAlchemy`, `Alembic`
 - **СУБД**: `PostgreSQL` (`psycopg`)
+- **Кэш и сессии**: `Redis 7.4` (`redis-py`)
 - **Валидация**: `Pydantic` (`pydantic[email]`, `pydantic-settings`)
 
-Зависимости в [`requirements.txt`](./requirements.txt) сведены к минимуму — только библиотеки, необходимые для работы API и подключения к PostgreSQL.
+Зависимости в [`requirements.txt`](./requirements.txt) сведены к минимуму — только библиотеки, необходимые для работы API и подключения к PostgreSQL и Redis.
 
 ---
 
@@ -19,16 +20,18 @@ CRUD API для управления **пользователями**, **нов�
 ```text
 lab1_Jia_B_Y/
 ├── alembic.ini                       # Конфигурация Alembic
-├── docker-compose.yml                # Быстрый запуск PostgreSQL в Docker
+├── docker-compose.yml                # Запуск PostgreSQL и Redis в Docker
 ├── .env.example                      # Пример переменных окружения
 ├── requirements.txt                  # Минимальный набор зависимостей
 ├── migrations/
 │   ├── env.py                        # Подключение метаданных ORM и DATABASE_URL
 │   └── versions/
 │       ├── 0001_create_initial_tables.py   # Миграция 1: создание таблиц и связей
-│       └── 0002_seed_mock_data.py          # Миграция 2: наполнение моковыми данными
+│       ├── 0002_seed_mock_data.py          # Миграция 2: наполнение моковыми данными
+│       └── 0003_add_user_password_hash.py  # Миграция 3: хеши паролей для входа
 └── app/
     ├── main.py                       # Точка входа FastAPI, регистрация роутеров
+    ├── cache.py                      # Redis и логирование доступа к кэшу
     ├── config.py                     # Настройки приложения из .env
     ├── database.py                   # Engine, SessionLocal, Base, get_db dependency
     ├── models/                       # Model: SQLAlchemy ORM-модели
@@ -106,7 +109,7 @@ erDiagram
 
 ## Миграции (Alembic)
 
-В проекте определены две последовательные миграции:
+В проекте определены три последовательные миграции.
 
 1. **`0001_create_initial_tables`** — создаёт таблицы `users`, `news`, `comments`, первичный и внешние ключи с `ON DELETE CASCADE`, уникальный индекс `ix_users_email` и индексы для внешних ключей (`ix_news_author_id`, `ix_comments_news_id`, `ix_comments_author_id`). В `downgrade()` выполняется обратное удаление индексов и таблиц.
 2. **`0002_seed_mock_data`** — добавляет моковые данные:
@@ -114,6 +117,8 @@ erDiagram
    - 2 новости с JSON-контентом,
    - 3 комментария.
    После вставки явных `id` выполняется синхронизация PostgreSQL-последовательностей (`setval`), чтобы последующие `POST`-запросы не конфликтовали по первичному ключу. В `downgrade()` моковые записи удаляются.
+
+3. **`0003_add_user_password_hash`** — добавляет поле для хеша пароля. Существующие записи остаются доступны в CRUD API. Для входа создайте учётную запись через `POST /auth/register`.
 
 ---
 
@@ -128,7 +133,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Запуск PostgreSQL
+### 2. Запуск PostgreSQL и Redis
 
 **Вариант A — через Docker Compose:**
 
@@ -136,7 +141,7 @@ pip install -r requirements.txt
 docker compose up -d
 ```
 
-**Вариант B — локально установленный PostgreSQL:**
+**Вариант B — локально установленные PostgreSQL и Redis.** Запустите Redis и укажите адрес в `REDIS_URL` при необходимости.
 
 Создайте пользователя `postgres` с паролем `postgres` и базу `news_api` (или укажите свои параметры в `.env` в переменной `DATABASE_URL`):
 
@@ -164,6 +169,30 @@ uvicorn app.main:app --reload
 
 - API доступен по адресу: `http://127.0.0.1:8000`
 - Интерактивная документация Swagger UI: `http://127.0.0.1:8000/docs`
+
+---
+
+## Работа с Redis
+
+- `GET /news` и `GET /news/{id}` сначала проверяют Redis. При промахе сервис читает PostgreSQL и сохраняет ответ на 300 секунд. Списки с фильтрами по автору имеют отдельные ключи. После изменения новостей или удаления автора сервис переключает версию кэша новостей. Записи предыдущей версии автоматически истекают.
+- При проверке права автора на публикацию и в `GET /auth/me` кэш ролей хранит только ID и флаг `is_verified_author` на 60 секунд. При промахе сервис читает эти поля из PostgreSQL. Изменение флага или удаление пользователя инвалидирует кэш ролей.
+- `POST /auth/login` проверяет хеш пароля из PostgreSQL и создаёт сессию в Redis. Запись сессии содержит ID пользователя, хеши токенов и сроки действия. TTL записи равен сроку refresh token (7 дней по умолчанию). `POST /auth/refresh` атомарно обновляет оба токена, сохраняя исходный срок сессии. Предыдущая пара перестаёт действовать. Access token действует до 15 минут по умолчанию.
+- При ошибках Redis чтение кэшируемых данных обращается к PostgreSQL. Операции с сессиями при недоступности Redis возвращают `503`. Если Redis недоступен при инвалидации, запись прежней версии может оставаться доступной до истечения TTL после восстановления Redis.
+
+Проверьте кэш двумя последовательными запросами к существующей новости.
+
+```bash
+curl -s http://127.0.0.1:8000/news/1
+curl -s http://127.0.0.1:8000/news/1
+```
+
+При первом чтении новой версии в логе Uvicorn появится `cache=miss scope=news key=item:1 source=postgres`, при повторном — `cache=hit scope=news key=item:1 source=redis`.
+
+Проверка сессии через Swagger UI (`/docs`):
+
+1. Вызовите `POST /auth/register`, указав имя, новый email и пароль от 12 символов.
+2. Вызовите `POST /auth/login` с теми же email и паролем. Введите полученный `access_token` в **Authorize** и вызовите `GET /auth/me`. Повторный запрос покажет попадание в кэш ролей.
+3. Передайте `refresh_token` в `POST /auth/refresh`. Получите новую пару токенов. Запрос с прежним access token и повторная попытка обновления с прежним refresh token вернут `401`.
 
 ---
 

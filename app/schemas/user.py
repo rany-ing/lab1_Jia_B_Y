@@ -26,3 +26,8 @@ class UserRead(BaseModel):
     registered_at: datetime
     is_verified_author: bool
     avatar: str | None = None
+
+
+class UserRole(BaseModel):
+    id: int
+    is_verified_author: bool
