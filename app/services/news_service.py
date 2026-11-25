@@ -5,6 +5,10 @@ from sqlalchemy.orm import Session
 from app.models.news import News
 from app.models.user import User
 from app.schemas.news import NewsCreate, NewsUpdate
+from app.tasks.notifications import send_new_news_notification
+from app.utils.logger import get_notification_logger
+
+logger = get_notification_logger()
 
 
 def list_news(db: Session, author_id: int | None = None) -> list[News]:
@@ -41,6 +45,13 @@ def create_news(db: Session, payload: NewsCreate) -> News:
     db.add(news)
     db.commit()
     db.refresh(news)
+
+    try:
+        task = send_new_news_notification.delay(news.id)
+        logger.info("Queued new_news notification task_id=%s for news_id=%s", task.id, news.id)
+    except Exception as exc:
+        logger.error("Failed to enqueue new_news notification for news_id=%s: %s", news.id, exc)
+
     return news
 
 
