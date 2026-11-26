@@ -1,0 +1,129 @@
+.header {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.brand {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #0f172a;
+  text-decoration: none;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.navLink {
+  color: #475569;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.navLink:hover {
+  color: #0f172a;
+}
+
+.createBtn {
+  background: #2563eb;
+  color: #ffffff;
+  text-decoration: none;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.createBtn:hover {
+  background: #1d4ed8;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+}
+
+.userBox {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.userName {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.badges {
+  display: flex;
+  gap: 6px;
+}
+
+.badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+.badgeAdmin {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.badgeVerified {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.badgeReader {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.loginBtn,
+.logoutBtn {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.loginBtn:hover,
+.logoutBtn:hover {
+  background: #f8fafc;
+}
