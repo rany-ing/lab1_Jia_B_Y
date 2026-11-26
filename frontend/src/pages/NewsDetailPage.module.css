@@ -1,0 +1,214 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.backLink {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+  align-self: flex-start;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.articleCard {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.cover {
+  width: 100%;
+  max-height: 360px;
+  object-fit: cover;
+  display: block;
+}
+
+.articleBody {
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.metaRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.newsActions {
+  display: flex;
+  gap: 8px;
+}
+
+.editBtn {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.editBtn:hover {
+  background: #f8fafc;
+}
+
+.deleteBtn {
+  background: #ffffff;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.deleteBtn:hover {
+  background: #fef2f2;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.85rem;
+  line-height: 1.25;
+  color: #0f172a;
+}
+
+.content {
+  color: #1e293b;
+  line-height: 1.65;
+  font-size: 1rem;
+}
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sectionHeading {
+  margin: 8px 0 4px;
+  font-size: 1.15rem;
+  color: #0f172a;
+}
+
+.paragraph {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.json {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  overflow-x: auto;
+  font-size: 0.88rem;
+}
+
+.commentsSection {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.commentsTitle {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #0f172a;
+}
+
+.commentForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font: inherit;
+  resize: vertical;
+}
+
+.submitBtn {
+  align-self: flex-start;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.submitBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.loginPrompt {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #475569;
+  font-size: 0.92rem;
+}
+
+.loginPrompt a {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.commentsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.emptyComments,
+.state {
+  color: #64748b;
+}
+
+.formError {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.88rem;
+}
+
+.errorBox {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 16px 20px;
+  border-radius: 10px;
+}

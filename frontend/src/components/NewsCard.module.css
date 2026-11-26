@@ -1,0 +1,80 @@
+.card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.card:hover {
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  transform: translateY(-1px);
+}
+
+.coverWrap {
+  display: block;
+  max-height: 220px;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.cover {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  display: block;
+}
+
+.body {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.35;
+}
+
+.titleLink {
+  color: #0f172a;
+  text-decoration: none;
+}
+
+.titleLink:hover {
+  color: #2563eb;
+}
+
+.preview {
+  margin: 0;
+  color: #475569;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.readMore {
+  align-self: flex-start;
+  margin-top: 4px;
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.readMore:hover {
+  text-decoration: underline;
+}
