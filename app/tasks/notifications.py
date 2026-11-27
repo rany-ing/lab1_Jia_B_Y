@@ -10,6 +10,12 @@ from app.config import settings
 from app.database import SessionLocal
 from app.models.news import News
 from app.models.user import User
+from app.observability.metrics import (
+    export_metrics_to_json,
+    news_notifications_failed_total,
+    news_notifications_sent_total,
+    news_notifications_skipped_total,
+)
 from app.utils.logger import get_notification_logger
 
 logger = get_notification_logger()
@@ -75,6 +81,7 @@ def send_new_news_notification(self: Task, news_id: int) -> dict[str, Any]:
             idempotency_key = f"notif:new_news:{news_id}:user:{user.id}"
             if not _acquire_idempotency_key(redis_client, idempotency_key):
                 skipped_count += 1
+                news_notifications_skipped_total.labels(notification_type="new_news").inc()
                 logger.info(
                     "[IDEMPOTENT SKIP] type=new_news | news_id=%s | to=%s (user_id=%s) | task_id=%s",
                     news_id,
@@ -95,10 +102,12 @@ def send_new_news_notification(self: Task, news_id: int) -> dict[str, Any]:
                     task_id,
                 )
                 sent_count += 1
+                news_notifications_sent_total.labels(notification_type="new_news").inc()
             except Exception:
                 _release_idempotency_key(redis_client, idempotency_key)
                 raise
 
+        export_metrics_to_json()
         return {
             "status": "completed",
             "news_id": news_id,
@@ -106,6 +115,8 @@ def send_new_news_notification(self: Task, news_id: int) -> dict[str, Any]:
             "skipped": skipped_count,
         }
     except Exception as exc:
+        news_notifications_failed_total.labels(notification_type="new_news").inc()
+        export_metrics_to_json()
         logger.error(
             "Task task_id=%s (news_id=%s) failed on attempt %s: %s",
             task_id,
@@ -183,6 +194,7 @@ def send_weekly_digest(self: Task, digest_key: str | None = None) -> dict[str, A
             idempotency_key = f"notif:weekly_digest:{period_key}:user:{user.id}"
             if not _acquire_idempotency_key(redis_client, idempotency_key):
                 skipped_count += 1
+                news_notifications_skipped_total.labels(notification_type="weekly_digest").inc()
                 logger.info(
                     "[IDEMPOTENT SKIP] type=weekly_digest | period=%s | to=%s (user_id=%s) | task_id=%s",
                     period_key,
@@ -205,10 +217,12 @@ def send_weekly_digest(self: Task, digest_key: str | None = None) -> dict[str, A
                     task_id,
                 )
                 sent_count += 1
+                news_notifications_sent_total.labels(notification_type="weekly_digest").inc()
             except Exception:
                 _release_idempotency_key(redis_client, idempotency_key)
                 raise
 
+        export_metrics_to_json()
         return {
             "status": "completed",
             "period": period_key,
@@ -217,6 +231,8 @@ def send_weekly_digest(self: Task, digest_key: str | None = None) -> dict[str, A
             "skipped": skipped_count,
         }
     except Exception as exc:
+        news_notifications_failed_total.labels(notification_type="weekly_digest").inc()
+        export_metrics_to_json()
         logger.error(
             "Weekly digest task_id=%s (period=%s) failed on attempt %s: %s",
             task_id,

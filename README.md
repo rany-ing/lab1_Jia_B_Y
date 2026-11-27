@@ -330,3 +330,21 @@ celery -A app.celery_app:celery_app beat --loglevel=info
 ```bash
 docker compose up -d --build
 ```
+
+---
+
+## Метрики, логирование и трекинг ошибок (Prometheus + Grafana, ELK, Hawk)
+
+1. **Prometheus и Grafana**:
+   - Эндпоинт `/metrics` отдаёт стандартные HTTP-метрики (`http_requests_total`, `http_request_duration_seconds`) и бизнес-/кастомные метрики:
+     - `news_created_total`, `news_total` — созданные и текущие новости;
+     - `users_registered_total`, `users_total` — зарегистрированные и текущие пользователи;
+     - `news_notifications_sent_total`, `news_notifications_skipped_total`, `news_notifications_failed_total` — отправка уведомлений по типам (`new_news`, `weekly_digest`).
+   - Эндпоинт `/metrics/json` и файл `logs/metrics.json` сохраняют полный снимок всех метрик в формате JSON.
+   - Grafana (`http://localhost:3000`, логин/пароль по умолчанию `admin`/`admin`) автоматически подключает источник данных Prometheus и дашборд `News API Observability`.
+2. **Структурированное JSON-логирование (`structlog` + ELK)**:
+   - Все HTTP-запросы и ошибки логируются в JSON (`logs/app.log` и stdout) с полями `request_id`, `method`, `path`, `status_code`, `duration_ms`, `client_ip`, `timestamp`, `level`.
+   - Logstash читает `logs/app.log`, парсит JSON и отправляет записи в Elasticsearch (`news-api-logs-*`) для поиска и сортировки по полям в Kibana (`http://localhost:5601`).
+3. **Hawk Error Tracking (`hawk-python-sdk`)**:
+   - Создайте воркспейс и проект на [hawk.so](https://hawk.so) и укажите токен в `.env` (`HAWK_TOKEN=...`).
+   - Для проверки отправки ошибки можно вызвать `GET /debug/error`.
