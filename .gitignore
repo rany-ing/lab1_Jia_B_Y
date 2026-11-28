@@ -9,6 +9,10 @@ env/
 # Environment variables
 .env
 
+# Logs & Celery Beat schedule
+logs/
+celerybeat-schedule*
+
 # IDE & OS
 .DS_Store
 .vscode/
