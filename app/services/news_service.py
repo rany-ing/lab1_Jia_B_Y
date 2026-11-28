@@ -4,7 +4,12 @@ from sqlalchemy.orm import Session
 
 from app.models.news import News
 from app.models.user import User
-from app.observability.metrics import export_metrics_to_json, news_created_total, news_total
+from app.observability.metrics import (
+    export_metrics_to_json,
+    news_created_total,
+    news_notifications_sent_total,
+    news_total,
+)
 from app.schemas.news import NewsCreate, NewsUpdate
 from app.tasks.notifications import send_new_news_notification
 from app.utils.logger import get_notification_logger
@@ -53,6 +58,8 @@ def create_news(db: Session, payload: NewsCreate) -> News:
     db.refresh(news)
 
     news_created_total.inc()
+    user_count = db.scalar(select(func.count()).select_from(User)) or 1
+    news_notifications_sent_total.labels(notification_type="new_news").inc(user_count)
     _sync_news_gauge(db)
     export_metrics_to_json()
 
