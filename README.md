@@ -348,3 +348,27 @@ docker compose up -d --build
 3. **Hawk Error Tracking (`hawk-python-sdk`)**:
    - Создайте воркспейс и проект на [hawk.so](https://hawk.so) и укажите токен в `.env` (`HAWK_TOKEN=...`).
    - Для проверки отправки ошибки можно вызвать `GET /debug/error`.
+
+---
+
+## Тестирование и E2E (pytest + pytest-asyncio + Playwright)
+
+В проект добавлены модульные/интеграционные тесты и E2E-тест через UI (`/ui`):
+
+- `tests/conftest.py` — фикстуры изолированной БД, `test_user` (верифицированный автор), `reader_user` и `async_client` (`httpx.AsyncClient`).
+- `tests/test_api_crud.py` — асинхронные тесты CRUD пользователей, новостей (включая проверку прав и каскадного удаления комментариев), комментариев, статуса задач и хелперов Hawk.
+- `tests/test_notifications.py` и `tests/test_observability.py` — тесты Celery/Redis уведомлений, идемпотентности, graceful shutdown, Prometheus/JSON метрик и `structlog` JSON-логов.
+- `tests/test_e2e_news_ui.py` — E2E-тест на **Playwright**, проходящий базовый сценарий через UI `/ui`: создание новости → чтение → редактирование → удаление.
+
+### Запуск тестов и проверка покрытия
+
+```bash
+# Установка браузера для Playwright (один раз)
+playwright install chromium
+
+# Запуск всех тестов с отчётом о покрытии (>= 60%)
+pytest --cov=app --cov-report=term-missing
+
+# Отдельный запуск E2E-теста
+pytest -m e2e
+```

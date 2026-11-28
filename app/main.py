@@ -5,7 +5,13 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.controllers import comment_router, news_router, notification_router, user_router
+from app.controllers import (
+    comment_router,
+    news_router,
+    notification_router,
+    ui_router,
+    user_router,
+)
 from app.database import get_db
 from app.models.news import News
 from app.models.user import User
@@ -34,6 +40,7 @@ app.include_router(user_router)
 app.include_router(news_router)
 app.include_router(comment_router)
 app.include_router(notification_router)
+app.include_router(ui_router)
 
 
 @app.get("/health", tags=["Health"])
