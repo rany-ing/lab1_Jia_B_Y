@@ -1,10 +1,25 @@
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.news import News
 from app.models.user import User
+from app.observability.metrics import (
+    export_metrics_to_json,
+    news_created_total,
+    news_notifications_sent_total,
+    news_total,
+)
 from app.schemas.news import NewsCreate, NewsUpdate
+from app.tasks.notifications import send_new_news_notification
+from app.utils.logger import get_notification_logger
+
+logger = get_notification_logger()
+
+
+def _sync_news_gauge(db: Session) -> None:
+    count = db.scalar(select(func.count()).select_from(News)) or 0
+    news_total.set(count)
 
 
 def list_news(db: Session, author_id: int | None = None) -> list[News]:
@@ -41,6 +56,19 @@ def create_news(db: Session, payload: NewsCreate) -> News:
     db.add(news)
     db.commit()
     db.refresh(news)
+
+    news_created_total.inc()
+    user_count = db.scalar(select(func.count()).select_from(User)) or 1
+    news_notifications_sent_total.labels(notification_type="new_news").inc(user_count)
+    _sync_news_gauge(db)
+    export_metrics_to_json()
+
+    try:
+        task = send_new_news_notification.delay(news.id)
+        logger.info("Queued new_news notification task_id=%s for news_id=%s", task.id, news.id)
+    except Exception as exc:
+        logger.error("Failed to enqueue new_news notification for news_id=%s: %s", news.id, exc)
+
     return news
 
 
@@ -58,3 +86,5 @@ def delete_news(db: Session, news_id: int) -> None:
     news = get_news(db, news_id)
     db.delete(news)
     db.commit()
+    _sync_news_gauge(db)
+    export_metrics_to_json()

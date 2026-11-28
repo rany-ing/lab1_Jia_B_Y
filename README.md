@@ -292,3 +292,59 @@ curl -s -X PATCH http://127.0.0.1:8000/users/5 \
 curl -i -X DELETE http://127.0.0.1:8000/comments/1
 curl -i -X DELETE http://127.0.0.1:8000/users/5
 ```
+
+---
+
+## Фоновые email-уведомления (Celery + Redis)
+
+В проект добавлена система моковых email-уведомлений на базе **Celery** и **Redis**:
+
+1. **Уведомление о новой новости** (`app.tasks.notifications.send_new_news_notification`):
+   - Автоматически ставится в очередь при успешном создании новости (`POST /news`).
+   - Отправляет моковое уведомление всем пользователям из PostgreSQL.
+2. **Еженедельный воскресный дайджест** (`app.tasks.notifications.send_weekly_digest`):
+   - Запускается по расписанию **Celery Beat** каждое воскресенье в `09:00 UTC` (`crontab(hour=9, minute=0, day_of_week="sunday")`).
+   - Собирает новости за последние 7 дней и отправляет моковый дайджест всем пользователям.
+   - Также доступен ручной запуск через `POST /notifications/digest` и проверка статуса задачи через `GET /notifications/tasks/{task_id}`.
+3. **Надёжность и требования ТЗ**:
+   - **Ретраи и exponential backoff**: настроены `autoretry_for=(Exception,)`, `retry_backoff=2`, `retry_backoff_max=300`, `retry_jitter=True`, `max_retries=5`.
+   - **Graceful shutdown**: включены `task_acks_late=True`, `task_reject_on_worker_lost=True`, `worker_prefetch_multiplier=1`, а также обработчики сигналов `worker_shutting_down` и `worker_shutdown`, которые корректно прерывают цикл рассылки и перепоручают оставшихся пользователей.
+   - **Идемпотентность**: перед отправкой каждому пользователю в Redis атомарно создаётся ключ (`SET ... NX EX`) вида `notif:new_news:{news_id}:user:{user_id}` или `notif:weekly_digest:{period}:user:{user_id}` — повторный запуск или ретрай не создаёт дубликатов.
+   - **Логирование в файл**: все моковые отправки записываются в файл `logs/notifications.log` (настраивается через `NOTIFICATION_LOG_FILE`).
+
+### Запуск Celery Worker и Celery Beat локально
+
+```bash
+# В первом терминале: API
+uvicorn app.main:app --reload
+
+# Во втором терминале: Celery Worker
+celery -A app.celery_app:celery_app worker --loglevel=info
+
+# В третьем терминале: Celery Beat (воскресный дайджест)
+celery -A app.celery_app:celery_app beat --loglevel=info
+```
+
+### Запуск всего стека через Docker Compose
+
+```bash
+docker compose up -d --build
+```
+
+---
+
+## Метрики, логирование и трекинг ошибок (Prometheus + Grafana, ELK, Hawk)
+
+1. **Prometheus и Grafana**:
+   - Эндпоинт `/metrics` отдаёт стандартные HTTP-метрики (`http_requests_total`, `http_request_duration_seconds`) и бизнес-/кастомные метрики:
+     - `news_created_total`, `news_total` — созданные и текущие новости;
+     - `users_registered_total`, `users_total` — зарегистрированные и текущие пользователи;
+     - `news_notifications_sent_total`, `news_notifications_skipped_total`, `news_notifications_failed_total` — отправка уведомлений по типам (`new_news`, `weekly_digest`).
+   - Эндпоинт `/metrics/json` и файл `logs/metrics.json` сохраняют полный снимок всех метрик в формате JSON.
+   - Grafana (`http://localhost:3000`, логин/пароль по умолчанию `admin`/`admin`) автоматически подключает источник данных Prometheus и дашборд `News API Observability`.
+2. **Структурированное JSON-логирование (`structlog` + ELK)**:
+   - Все HTTP-запросы и ошибки логируются в JSON (`logs/app.log` и stdout) с полями `request_id`, `method`, `path`, `status_code`, `duration_ms`, `client_ip`, `timestamp`, `level`.
+   - Logstash читает `logs/app.log`, парсит JSON и отправляет записи в Elasticsearch (`news-api-logs-*`) для поиска и сортировки по полям в Kibana (`http://localhost:5601`).
+3. **Hawk Error Tracking (`hawk-python-sdk`)**:
+   - Создайте воркспейс и проект на [hawk.so](https://hawk.so) и укажите токен в `.env` (`HAWK_TOKEN=...`).
+   - Для проверки отправки ошибки можно вызвать `GET /debug/error`.
